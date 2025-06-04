@@ -98,4 +98,5 @@ if __name__ == "__main__":
         if matrices:
             print(f"\nShowing all {len(matrices)} matrices:")
             dna_utils.print_matrices(matrices)
+            print()
             print(dna_utils.decode(matrices, len(file_dna)))
