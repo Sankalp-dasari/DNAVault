@@ -6,6 +6,13 @@ class dna_utils:
             'C': '10',
             'T': '11'
         }
+
+        self.retain = {
+            '00': 'A',
+            '01': 'G',
+            '10': 'C',
+            '11': 'T'
+        }
     
     def fileReader(self, filename):
          with open(filename, 'r') as file:
@@ -53,6 +60,28 @@ class dna_utils:
         
         return matrices
     
+    def matrices_to_binary(self, matrices):
+        binaryForm = ""
+        for matrix in matrices:
+            for row in matrix:
+                for cell in row:
+                    binaryForm += cell
+        return binaryForm
+    
+    def binary_to_dna(self, binaryForm):
+        dna_sequence = ""
+        for i in range(0, len(binaryForm), 2):
+            binary_pair = binaryForm[i:i+2]
+            if binary_pair in self.retain:
+                dna_sequence += self.retain[binary_pair]
+        return dna_sequence
+    
+    def decode(self, matrices, original_length):
+        binaryForm = self.matrices_to_binary(matrices)
+        dna_sequence = self.binary_to_dna(binaryForm)
+        dna = dna_sequence[:original_length]
+        return dna
+    
     def print_matrices(self, matrices):
         for i, matrix in enumerate(matrices):
             print(f"\nMatrix {i + 1}:")
@@ -69,3 +98,4 @@ if __name__ == "__main__":
         if matrices:
             print(f"\nShowing all {len(matrices)} matrices:")
             dna_utils.print_matrices(matrices)
+            print(dna_utils.decode(matrices, len(file_dna)))
