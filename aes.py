@@ -41,11 +41,28 @@ class Encryption:
                 state_array[i, j] = self.s_box[row_in_sbox, col_in_sbox] # Add the value from S-box into the state array matrix
                 
         print(f"State Array: \n{state_array}")
+
         return state_array
 
     # Return shifted state array
-    def shift_rows(self):
-        pass
+    # Row 0 --> No Shift
+    # Row 1 --> Shift left by 1
+    # Row 2 --> Shift left by 2
+    # Row 3 --> Shift left by 3
+    def shift_rows(self, state_array):
+        print(f"Before Shift: \n{state_array}")
+
+        shifted_rows = state_array # Store Matrix to be shifted
+        row, col = state_array.shape # Obtain size of the matrix
+
+        # Loop through each row
+        for i in range(row):
+            shifted_rows[i] = np.roll(state_array[i], shift=(-1 * i)) # Roll the elements in the matrix to the left
+        
+        print(f"After Shift: \n{shifted_rows}")
+
+        return shifted_rows
+
 
     # Return new state array
     def mix_columns(self):
@@ -63,4 +80,5 @@ plaintext = np.array([
  ])
 
 enc = Encryption(plaintext)
-enc.sub_bytes()
+state_array = enc.sub_bytes()
+shifted_rows = enc.shift_rows(state_array)
