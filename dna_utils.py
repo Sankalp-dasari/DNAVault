@@ -9,8 +9,7 @@ class dna_utils:
     
     def fileReader(self, filename):
          with open(filename, 'r') as file:
-            dna_sequence = file.read().strip().upper()
-            dna_sequence = ''.join(dna_sequence.split())
+            dna_sequence = file.read()
             return dna_sequence
     
     def padding(self, dna_sequence):
@@ -47,7 +46,7 @@ class dna_utils:
         
         return matrices
     
-    def encode_dna_to_bytes(self, dna_sequence):
+    def encode(self, dna_sequence):
         paddedForm = self.padding(dna_sequence)
         binaryForm = self.dna_to_binary(paddedForm)
         matrices = self.binary_to_matrices(binaryForm)
@@ -66,9 +65,7 @@ if __name__ == "__main__":
     file_dna = dna_utils.fileReader("dna_sequence_dataset.txt")
     if file_dna:
         print(f"Total length: {len(file_dna)} bases")
-        
-        matrices = dna_utils.encode_dna_to_bytes(file_dna)
-        print(f"Number of 4x4 matrices created: {len(matrices)}")
+        matrices = dna_utils.encode(file_dna)
         if matrices:
             print(f"\nShowing all {len(matrices)} matrices:")
             dna_utils.print_matrices(matrices)
