@@ -2,6 +2,7 @@
 # Implements AES encryption and decryption from scratch.
 
 import numpy as np # Imported for Matrix Calculation
+import sagemath
 
 class Encryption:
     def __init__(self, plaintext):
@@ -18,9 +19,22 @@ class Encryption:
             for j in range(cols):
                 matrix[i, j] = format(self.s_box[i, j], '08b')        
         self.s_box = matrix
+
+        # Pre-defined Matrix for the Mix Column Step
+        self.pre_defined = np.array([
+            [0x02, 0x03, 0x01, 0x01],
+            [0x01, 0x02, 0x03, 0x01],
+            [0x01, 0x01, 0x02, 0x03],
+            [0x03, 0x01, 0x01, 0x02]
+        ])
         
         # Round Key
-        self.roundkey = None
+        self.round = np.array([
+            ['11001010', '01101100', '10101010', '00011101'],
+            ['01010101', '11110000', '00110011', '10100101'],
+            ['01111001', '00000011', '11001100', '01011010'],
+            ['10111101', '00101101', '10011001', '11100011']
+        ])
 
     # Return State Array
     def sub_bytes(self):
@@ -43,12 +57,13 @@ class Encryption:
         print(f"State Array: \n{state_array}")
 
         return state_array
-
-    # Return shifted state array
-    # Row 0 --> No Shift
-    # Row 1 --> Shift left by 1
-    # Row 2 --> Shift left by 2
-    # Row 3 --> Shift left by 3
+    """
+    Return shifted state array
+    Row 0 --> No Shift
+    Row 1 --> Shift left by 1
+    Row 2 --> Shift left by 2
+    Row 3 --> Shift left by 3
+    """
     def shift_rows(self, state_array):
         print(f"Before Shift: \n{state_array}")
 
@@ -64,13 +79,33 @@ class Encryption:
         return shifted_rows
 
 
-    # Return new state array
-    def mix_columns(self):
-        pass
+    """
+    Return the new state array
+    INCOMPLETE
+    """
+    def mix_columns(self, shifted_rows):
+        row, col = shifted_rows.shape
+        counter = 0
+        for i in range(row):
+            row_pre_defined = self.pre_defined[i, :]
+            column_shifted = shifted_rows[:, i]
+            for j in range(col):
+                # Calculation of each term
+                S_ij = None
+
+
 
     # Return Final State Array
-    def round_key(self):
-        pass
+    def round_key(self, new_state_array):
+        row, col = new_state_array.shape # Size of the matrix
+        final_state_array = np.zeros_like(new_state_array) # Zero matrix to be populated
+        for i in range(row):
+            for j in range(col):
+                final_state_array[i, j] = new_state_array[i, j] ^ self.round[i, j] # Bitwise XOR operator
+        print(f"New State Array: \n{final_state_array}")
+        return final_state_array
+
+
 
 plaintext = np.array([
     ['00001100', '11101010', '00111000', '01001110'],
@@ -82,3 +117,5 @@ plaintext = np.array([
 enc = Encryption(plaintext)
 state_array = enc.sub_bytes()
 shifted_rows = enc.shift_rows(state_array)
+new_state_array = enc.mix_columns(shifted_rows)
+final_state_array = enc.round_key(new_state_array)
