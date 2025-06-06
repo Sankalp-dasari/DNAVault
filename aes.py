@@ -317,3 +317,55 @@ if __name__ == "__main__":
         print("working")
     else:
         print("not working")
+        
+
+ # ====================== KYBER + AES INTEGRATION ======================
+
+from kyber import Kyber
+
+def flatten_key_matrix(matrix):
+    flat = []
+    for row in matrix:
+        for binary_str in row:
+            flat.append(int(binary_str, 2))
+    return bytes(flat)
+
+# Instantiate Kyber
+kyber = Kyber()
+A, s, pk = kyber.keygen()
+
+# Print keygen step-by-step
+print("\n" + "="*50)
+print("KYBER KEY GENERATION")
+print("="*50)
+print("Public matrix A (first 10):", A[:10])
+print("Secret key s (first 10):", s[:10])
+print("Public key pk = A·s + e (first 10):", pk[:10])
+
+# Prepare AES key for encryption
+aes_key_matrix = enc.round_key
+aes_key_bytes = flatten_key_matrix(aes_key_matrix)
+
+# Encapsulate AES key using Kyber
+(u, v), shared_key = kyber.encapsulate(pk, A)
+
+# Print encapsulation debug info
+print("\n" + "="*50)
+print("KYBER ENCAPSULATION")
+print("="*50)
+print("Random ephemeral r (not printed directly, but used internally)")
+print("Ciphertext u (first 10):", u[:10])
+print("Ciphertext v (first 10):", v[:10])
+print("Derived shared AES key:", shared_key.hex())
+
+# Optional: override AES round key with first 16 bytes of Kyber key
+new_key_matrix = np.array([
+    [format(byte, '08b') for byte in shared_key[i:i+4]]
+    for i in range(0, 16, 4)
+])
+enc.round_key = new_key_matrix
+
+print("\n" + "="*50)
+print("AES ROUND KEY REPLACED WITH KYBER-DERIVED KEY")
+print("="*50)
+print(f"New round key matrix:\n{enc.round_key}\n")
