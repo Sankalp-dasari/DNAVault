@@ -140,6 +140,36 @@ class Encryption:
                 final_state_array[i, j] = format(xor_result, '08b')
         print(f"Add Round Key: \n{final_state_array}")
         return final_state_array
+    
+    def encrypt(self):
+        state = self.plaintext
+
+        print("=== AES ENCRYPTION START ===")
+        print(f"Initial Plaintext:\n{state}")
+
+        # Initial round: only AddRoundKey
+        print("\n[Round 0] Initial AddRoundKey")
+        state = self.round_key(state)
+
+        # 9 Main Rounds: SubBytes -> ShiftRows -> MixColumns -> AddRoundKey
+        for round_num in range(1, 10):
+            print(f"\n[Round {round_num}]")
+            state = self.sub_bytes()
+            state = self.shift_rows(state)
+            state = self.mix_columns(state)
+            state = self.round_key(state)
+
+        # Final Round: SubBytes -> ShiftRows -> AddRoundKey (no MixColumns)
+        print("\n[Round 10] Final Round")
+        state = self.sub_bytes()
+        state = self.shift_rows(state)
+        state = self.round_key(state)
+
+        print("\n=== AES ENCRYPTION COMPLETE ===")
+        print(f"Final Ciphertext:\n{state}")
+
+        return state
+
 
 
 # Test the implementation
@@ -150,9 +180,5 @@ plaintext = np.array([
     ['11110000', '00101101', '10101101', '11000101']
  ])
 
-print(f"Original Matrix: \n{plaintext}")
 enc = Encryption(plaintext)
-state_array = enc.sub_bytes()
-shifted_rows = enc.shift_rows(state_array)
-new_state_array = enc.mix_columns(shifted_rows)
-final_state_array = enc.round_key(new_state_array)
+ciphertext = enc.encrypt()
