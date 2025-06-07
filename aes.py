@@ -72,13 +72,34 @@ class Encryption:
             [0x0B, 0x0D, 0x09, 0x0E]
         ])
         
-        # Single Round Key (same for all rounds)
+
         self.round_key = np.array([
-            ['10101100', '00011001', '00101000', '01010111'],
-            ['01110111', '11111010', '11010001', '01011100'],
-            ['01100110', '11011100', '00101001', '00000000'],
-            ['11110011', '00100001', '01000001', '01101010']
+            ['10101100', '01110111', '01100110', '11110011'],
+            ['00011001', '11111010', '11011100', '00100001'],
+            ['00101000', '11010001', '00101001', '01000001'],
+            ['01010111', '01011100', '00000000', '01101010']
         ])
+
+        self.list_of_round_keys = []
+        self.list_of_round_keys.append(self.round_key)
+
+
+        # Round Constants
+        self.round_const = np.array([
+            ['00000001', '00000000', '00000000', '00000000'],
+            ['00000010', '00000000', '00000000', '00000000'],
+            ['00000100', '00000000', '00000000', '00000000'],
+            ['00001000', '00000000', '00000000', '00000000'],
+            ['00010000', '00000000', '00000000', '00000000'],
+            ['00100000', '00000000', '00000000', '00000000'],
+            ['01000000', '00000000', '00000000', '00000000'],
+            ['10000000', '00000000', '00000000', '00000000'],
+            ['00011011', '00000000', '00000000', '00000000'],
+            ['00110110', '00000000', '00000000', '00000000'],
+            ['01101100', '00000000', '00000000', '00000000']
+        ])
+
+        self.round_counter = 0
 
     def sub_bytes(self, state_array):
         """Apply SubBytes transformation"""
@@ -148,28 +169,94 @@ class Encryption:
         
         print(f"MixColumns Result:\n{mixed_columns}\n")
         return mixed_columns
+    
+    def key_expansion(self, counter):
+        """Apply Key Expansion"""
 
-    def add_round_key(self, state_array):
+        # Extract 4 words
+        wa = self.list_of_round_keys[counter][:, 0]
+        wb = self.list_of_round_keys[counter][:, 1]
+        wc = self.list_of_round_keys[counter][:, 2]
+        wd = self.list_of_round_keys[counter][:, 3]
+        
+        temp = wd # Keep the value of original value
+        
+        # Left Shift
+        wd = np.roll(wd, shift=-1)
+        
+        # Sub Bytes
+        for i in range(len(wd)):
+            row_in_sbox = int(wd[i][:4], 2)
+            col_in_sbox = int(wd[i][4:], 2)
+            wd[i] = self.s_box[row_in_sbox, col_in_sbox]
+
+
+        # XOR with Round Constant
+        RC = self.round_const[counter]
+        wd = np.array([int(x, 2) for x in wd], dtype=np.uint8)
+        RC = np.array([int(x, 2) for x in RC], dtype=np.uint8)
+        wd = wd ^ RC
+
+        # Set new Words
+        wa = np.array([int(x, 2) for x in wa], dtype=np.uint8)
+        wb = np.array([int(x, 2) for x in wb], dtype=np.uint8)
+        wc = np.array([int(x, 2) for x in wc], dtype=np.uint8)
+        temp = np.array([int(x, 2) for x in temp], dtype=np.uint8)
+
+        wa = wa ^ wd
+        wb = wb ^ wa
+        wc = wc ^ wb
+        wd = temp ^ wc
+
+        wa = np.array([format(x, '08b') for x in wa], dtype=object)
+        wb = np.array([format(x, '08b') for x in wb], dtype=object)
+        wc = np.array([format(x, '08b') for x in wc], dtype=object)
+        wd = np.array([format(x, '08b') for x in wd], dtype=object)
+
+        wa = np.transpose(wa)
+        wb = np.transpose(wb)
+        wc = np.transpose(wc)
+        wd = np.transpose(wd)
+
+        # Stack all 4x1 column matrices into a 4x4 matrix (round key)
+        new_round_key = np.column_stack((wa, wb, wc, wd))
+        self.list_of_round_keys.append(new_round_key)
+
+    def add_round_key(self, state_array, round_num=None):
         """Apply AddRoundKey transformation"""
         rows, cols = state_array.shape
         result = np.empty_like(state_array)
         
+        if round_num is None:
+            round_key = self.list_of_round_keys[self.round_counter]
+            self.round_counter += 1
+        else:
+            round_key = self.list_of_round_keys[round_num]
+
         for i in range(rows):
             for j in range(cols):
                 byte1 = int(state_array[i, j], 2)
-                byte2 = int(self.round_key[i, j], 2)
+                byte2 = int(round_key[i, j], 2)
                 xor_result = byte1 ^ byte2
                 result[i, j] = format(xor_result, '08b')
         
         print(f"AddRoundKey Result:\n{result}\n")
+
         return result
     
     def encrypt(self):
         """Perform AES encryption"""
+        self.round_counter = 0
         state = self.plaintext.copy()
 
         print("=== AES ENCRYPTION START ===")
         print(f"Initial Plaintext:\n{state}\n")
+
+        print("Create Round Keys")
+        for i in range(10):
+            enc.key_expansion(counter=i)
+
+        self.round_counter = 0
 
         print("[Round 0] Initial AddRoundKey")
         state = self.add_round_key(state)
@@ -258,19 +345,19 @@ class Encryption:
         print(f"Initial Ciphertext:\n{state}\n")
 
         print("[Round 0] Initial AddRoundKey")
-        state = self.add_round_key(state)
+        state = self.add_round_key(state, 10)
 
-        for round_num in range(1, 10):
-            print(f"[Round {round_num}]")
+        for round_num in range(9, 0, -1):
+            print(f"[Round {10 - round_num}]")
             state = self.inv_shift_rows(state)
             state = self.inv_sub_bytes(state)
-            state = self.add_round_key(state)
+            state = self.add_round_key(state, round_num)
             state = self.inv_mix_columns(state)
 
         print("[Round 10] Final Round")
         state = self.inv_shift_rows(state)
         state = self.inv_sub_bytes(state)
-        state = self.add_round_key(state)
+        state = self.add_round_key(state, 0)
 
         print("=== AES DECRYPTION COMPLETE ===")
         print(f"Final Decrypted Text:\n{state}")
@@ -297,6 +384,11 @@ if __name__ == "__main__":
     print("ENCRYPTION PHASE")
     print("="*50)
     ciphertext = enc.encrypt()
+
+    print(f"Size of round key list: {len(enc.list_of_round_keys)}")
+    print("List of Round Keys:\n")
+    for i in enc.list_of_round_keys:
+        print(f"{i}\n")
     
     # Decrypt
     print("\n" + "="*50)
@@ -310,7 +402,7 @@ if __name__ == "__main__":
     print("="*50)
     print(f"Original Plaintext:\n{plaintext}\n")
     print(f"Final Ciphertext:\n{ciphertext}\n")
-    print(f"Decrypted Text:\n{decrypted}\n")
+    print(f"Decrypted Text:\n{decrypted}\n") 
     
     # Check if decryption worked
     if np.array_equal(plaintext, decrypted):
