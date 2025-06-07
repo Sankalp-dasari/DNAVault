@@ -414,51 +414,55 @@ if __name__ == "__main__":
  # ====================== KYBER + AES INTEGRATION ======================
 # Testcase for generating a Kyber key to replace the AES round key
 from kyber import Kyber
-import numpy as np
 
-def flatten_key_matrix(matrix):
-    flat = []
-    for row in matrix:
-        for binary_str in row:
-            flat.append(int(binary_str, 2))
-    return bytes(flat)
 
-# Instantiate Kyber
+# Instantiate Kyber and generate keys
 kyber = Kyber()
 A, s, pk = kyber.keygen()
-
-# Print keygen step-by-step
-print("\n" + "="*50)
-print("KYBER KEY GENERATION")
-print("="*50)
-print("Public matrix A (first 10):", A[:10])
-print("Secret key s (first 10):", s[:10])
-print("Public key pk = A·s + e (first 10):", pk[:10])
-
-# Encapsulate to derive AES key
 (u, v), shared_key, m = kyber.encapsulate(pk, A)
 
-# Decapsulate to verify key recovery
-#recovered_key = kyber.decapsulate(u, v, s)
-
-# Print encapsulation debug info
+# Print Kyber encapsulation details
 print("\n" + "="*50)
 print("KYBER ENCAPSULATION")
 print("="*50)
-print("Ciphertext u (first 10):", u[:10])
-print("Ciphertext v (first 10):", v[:10])
-print("Derived shared AES key:", shared_key.hex())
-#print("Recovered AES key:", recovered_key.hex())
-#print("Match:", shared_key == recovered_key)
+print("Derived AES key:", shared_key.hex())
 
-# Optional: override AES round key with first 16 bytes of Kyber key
+# Generate a new round key matrix from Kyber key (first 16 bytes)
 new_key_matrix = np.array([
     [format(byte, '08b') for byte in shared_key[i:i+4]]
     for i in range(0, 16, 4)
 ])
-enc.round_key = new_key_matrix
 
+# Define plaintext for AES
+plaintext = np.array([
+    ['11101010', '00000100', '01100101', '10000101'],
+    ['10000011', '01000101', '01011101', '10010110'],
+    ['01011100', '00110011', '10011000', '10110000'],
+    ['11110000', '00101101', '10101101', '11000101']
+])
+
+# Instantiate AES with plaintext
+enc = Encryption(plaintext)
+
+# Override round key with Kyber-derived key
+enc.round_key = new_key_matrix
+enc.list_of_round_keys = [new_key_matrix]  # reset round keys
+
+# Print replaced key
 print("\n" + "="*50)
 print("AES ROUND KEY REPLACED WITH KYBER-DERIVED KEY")
 print("="*50)
 print(f"New round key matrix:\n{enc.round_key}\n")
+
+# Encrypt
+ciphertext = enc.encrypt()
+
+# Decrypt
+decrypted = enc.decrypt(ciphertext)
+
+# Verify
+print("\n" + "="*50)
+print("VERIFICATION")
+print("="*50)
+print(f"Decrypted Text:\n{decrypted}")
+print("\nMatch:", np.array_equal(plaintext, decrypted))

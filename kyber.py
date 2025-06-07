@@ -8,7 +8,7 @@ import numpy as np
 import hashlib
 
 class Kyber:
-   def __init__(self, n = 256, q = 3329, sigma = 0.15, clamp = 2):
+   def __init__(self, n = 256, q = 3329, sigma = 0.15, clamp = 4):
       self.n = n  #polynomial degree
       self.q = q  #modulus, we use a prime number for modular arithmetic and 3329 is chosen as it fits in 12 bits
       self.sigma = sigma  #standard deviation for noise
