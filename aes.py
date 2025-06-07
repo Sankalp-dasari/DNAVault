@@ -112,8 +112,6 @@ class Encryption:
                 row_in_sbox = int(byte[:4], 2)
                 col_in_sbox = int(byte[4:], 2)
                 result[i, j] = self.s_box[row_in_sbox, col_in_sbox]
-                
-        print(f"SubBytes Result:\n{result}\n")
         return result
     
     def shift_rows(self, state_array):
@@ -123,8 +121,6 @@ class Encryption:
 
         for i in range(rows):
             shifted_rows[i] = np.roll(state_array[i], shift=(-1 * i))
-        
-        print(f"ShiftRows Result:\n{shifted_rows}\n")
         return shifted_rows
 
     def gf_multiply(self, a, b):
@@ -166,8 +162,6 @@ class Encryption:
         for i in range(4):
             for j in range(4):
                 mixed_columns[i, j] = format(result[i, j], '08b')
-        
-        print(f"MixColumns Result:\n{mixed_columns}\n")
         return mixed_columns
     
     def key_expansion(self, counter):
@@ -239,8 +233,6 @@ class Encryption:
                 byte2 = int(round_key[i, j], 2)
                 xor_result = byte1 ^ byte2
                 result[i, j] = format(xor_result, '08b')
-        
-        print(f"AddRoundKey Result:\n{result}\n")
 
         return result
     
@@ -249,32 +241,22 @@ class Encryption:
         self.round_counter = 0
         state = self.plaintext.copy()
 
-        print("=== AES ENCRYPTION START ===")
-        print(f"Initial Plaintext:\n{state}\n")
-
-        print("Create Round Keys")
         for i in range(10):
             enc.key_expansion(counter=i)
 
         self.round_counter = 0
 
-        print("[Round 0] Initial AddRoundKey")
         state = self.add_round_key(state)
 
         for round_num in range(1, 10):
-            print(f"[Round {round_num}]")
             state = self.sub_bytes(state)
             state = self.shift_rows(state)
             state = self.mix_columns(state)
             state = self.add_round_key(state)
 
-        print("[Round 10] Final Round")
         state = self.sub_bytes(state)
         state = self.shift_rows(state)
         state = self.add_round_key(state)
-
-        print("=== AES ENCRYPTION COMPLETE ===")
-        print(f"Final Ciphertext:\n{state}")
 
         return state
 
@@ -291,8 +273,7 @@ class Encryption:
                 row_in_sbox = int(byte[:4], 2)
                 col_in_sbox = int(byte[4:], 2)
                 result[i, j] = self.inv_s_box[row_in_sbox, col_in_sbox]
-                
-        print(f"InvSubBytes Result:\n{result}\n")
+               
         return result
 
     def inv_shift_rows(self, state_array):
@@ -304,7 +285,6 @@ class Encryption:
         for i in range(rows):
             shifted_rows[i] = np.roll(state_array[i], shift=i)
         
-        print(f"InvShiftRows Result:\n{shifted_rows}\n")
         return shifted_rows
 
     def inv_mix_columns(self, state_array):
@@ -334,33 +314,23 @@ class Encryption:
             for j in range(4):
                 inv_mixed_columns[i, j] = format(result[i, j], '08b')
         
-        print(f"InvMixColumns Result:\n{inv_mixed_columns}\n")
         return inv_mixed_columns
 
     def decrypt(self, ciphertext):
         """Perform AES decryption"""
         state = ciphertext.copy()
 
-        print("=== AES DECRYPTION START ===")
-        print(f"Initial Ciphertext:\n{state}\n")
-
-        print("[Round 0] Initial AddRoundKey")
         state = self.add_round_key(state, 10)
 
         for round_num in range(9, 0, -1):
-            print(f"[Round {10 - round_num}]")
             state = self.inv_shift_rows(state)
             state = self.inv_sub_bytes(state)
             state = self.add_round_key(state, round_num)
             state = self.inv_mix_columns(state)
 
-        print("[Round 10] Final Round")
         state = self.inv_shift_rows(state)
         state = self.inv_sub_bytes(state)
         state = self.add_round_key(state, 0)
-
-        print("=== AES DECRYPTION COMPLETE ===")
-        print(f"Final Decrypted Text:\n{state}")
 
         return state
 
@@ -373,42 +343,18 @@ if __name__ == "__main__":
         ['11110000', '00101101', '10101101', '11000101']
     ])
 
-    print("Testing AES Encryption and Decryption Implementation")
-    print()
     
     # Create encryption object
     enc = Encryption(plaintext)
     
     # Encrypt
-    print("\n" + "="*50)
-    print("ENCRYPTION PHASE")
-    print("="*50)
     ciphertext = enc.encrypt()
-
-    print(f"Size of round key list: {len(enc.list_of_round_keys)}")
-    print("List of Round Keys:\n")
-    for i in enc.list_of_round_keys:
-        print(f"{i}\n")
-    
-    # Decrypt
-    print("\n" + "="*50)
-    print("DECRYPTION PHASE")
-    print("="*50)
     decrypted = enc.decrypt(ciphertext)
     
     # Verify
-    print("\n" + "="*50)
-    print("VERIFICATION")
-    print("="*50)
     print(f"Original Plaintext:\n{plaintext}\n")
     print(f"Final Ciphertext:\n{ciphertext}\n")
     print(f"Decrypted Text:\n{decrypted}\n") 
-    
-    # Check if decryption worked
-    if np.array_equal(plaintext, decrypted):
-        print("working")
-    else:
-        print("not working")
         
 
  # ====================== KYBER + AES INTEGRATION ======================
@@ -420,12 +366,6 @@ from kyber import Kyber
 kyber = Kyber()
 A, s, pk = kyber.keygen()
 (u, v), shared_key, m = kyber.encapsulate(pk, A)
-
-# Print Kyber encapsulation details
-print("\n" + "="*50)
-print("KYBER ENCAPSULATION")
-print("="*50)
-print("Derived AES key:", shared_key.hex())
 
 # Generate a new round key matrix from Kyber key (first 16 bytes)
 new_key_matrix = np.array([
@@ -448,21 +388,8 @@ enc = Encryption(plaintext)
 enc.round_key = new_key_matrix
 enc.list_of_round_keys = [new_key_matrix]  # reset round keys
 
-# Print replaced key
-print("\n" + "="*50)
-print("AES ROUND KEY REPLACED WITH KYBER-DERIVED KEY")
-print("="*50)
-print(f"New round key matrix:\n{enc.round_key}\n")
-
 # Encrypt
 ciphertext = enc.encrypt()
 
 # Decrypt
 decrypted = enc.decrypt(ciphertext)
-
-# Verify
-print("\n" + "="*50)
-print("VERIFICATION")
-print("="*50)
-print(f"Decrypted Text:\n{decrypted}")
-print("\nMatch:", np.array_equal(plaintext, decrypted))
