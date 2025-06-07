@@ -54,7 +54,17 @@ class Kyber:
    def polyMul(self, a , b):
       result = np.convolve(a, b)[:self.n]
       return result % self.q
-
+   
+   #encodes 256 bits message into a polynomial
+   def encodeMessage(self, m):
+      #encodes 256 bits message into a polynomial
+      bit_array = np.unpackbits(np.frombuffer(m, dtype=np.uint8)).astype(np.int32)
+      return (bit_array * (self.q // 2)).astype(np.int32)
+   
+   # Decodes a polynomial back into a 256 bits message
+   def decodeMessage(self, poly):
+      bits = (poly >(self.q//4)).astype(np.uint8)
+      return np.packbits(bits).tobytes()  
    # Generates a public key that is shared and is used in encapsulation.
    # A secret key that is kept private and is used in decapsulation
    # A public matrix polynomial 'A' that acts as a lattice generator
@@ -80,20 +90,27 @@ class Kyber:
        - e1, e2 are small noise vectors
        - u = A * r + e1 (mod q)
        - v = pk * r + e2 (mod q)
-       - The shared AES key is derived by hashing v
+       - The shared AES key is derived by hashing (u || v || m)
       """
-      r = self.randomPoly()                    # fresh secret for this session
-      e1 = self.noisePoly()      # error for u
-      e2 = self.noisePoly()      # error for v
-
-      u = self.polyAdd(self.polyMul(A, r), e1)  # u = A·r + e1
-      v = self.polyAdd(self.polyMul(pk, r), e2) # v = pk·r + e2
+      r = self.randomPoly() # fresh secret for this session
+      e1 = self.noisePoly() # error for u
+      e2 = self.noisePoly() # error for v
+      m = np.random.bytes(32)  #256 bit random message for AES key derivation (needed to derive a unique key for each session)
+      m_encoded = self.encodeMessage(m)
+      
+      u = self.polyAdd(self.polyMul(A, r), e1)  # u = A·r + e1 
+      v = self.polyAdd(self.polyMul(pk, r), m_encoded) # v = pk·r + e2
+      
 
       # Convert v to bytes and hash it to get a clean AES key
-      v_bytes = v.astype(np.uint16).tobytes()
-      shared_key = hashlib.sha256(v_bytes).digest()  # 256-bit AES key
+      combined = u.astype(np.uint16).tobytes() +v.astype(np.uint16).tobytes() + m
+      shared_key = hashlib.sha256(combined).digest()  # 256-bit AES key
 
-      return (u, v), shared_key  # ciphertext + derived AES key
+      return (u, v), shared_key, m  # ciphertext + derived AES key
+
+   #def decapsulate(self, u, v, m):
+   
+
 
 if __name__ == "__main__":
     kyber = Kyber()
@@ -102,9 +119,10 @@ if __name__ == "__main__":
     A, s, pk = kyber.keygen()
 
     # Encapsulate: Generate ciphertext and AES key
-    (u, v), shared_key = kyber.encapsulate(pk, A)
-
+    (u, v), shared_key, m = kyber.encapsulate(pk, A)
     # Display short previews
     print("u (partial):", u[:5])
     print("v (partial):", v[:5])
     print("Shared AES Key:", shared_key.hex())
+
+

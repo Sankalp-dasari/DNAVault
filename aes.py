@@ -412,8 +412,9 @@ if __name__ == "__main__":
         
 
  # ====================== KYBER + AES INTEGRATION ======================
-
+# Testcase for generating a Kyber key to replace the AES round key
 from kyber import Kyber
+import numpy as np
 
 def flatten_key_matrix(matrix):
     flat = []
@@ -434,21 +435,21 @@ print("Public matrix A (first 10):", A[:10])
 print("Secret key s (first 10):", s[:10])
 print("Public key pk = A·s + e (first 10):", pk[:10])
 
-# Prepare AES key for encryption
-aes_key_matrix = enc.round_key
-aes_key_bytes = flatten_key_matrix(aes_key_matrix)
+# Encapsulate to derive AES key
+(u, v), shared_key, m = kyber.encapsulate(pk, A)
 
-# Encapsulate AES key using Kyber
-(u, v), shared_key = kyber.encapsulate(pk, A)
+# Decapsulate to verify key recovery
+#recovered_key = kyber.decapsulate(u, v, s)
 
 # Print encapsulation debug info
 print("\n" + "="*50)
 print("KYBER ENCAPSULATION")
 print("="*50)
-print("Random ephemeral r (not printed directly, but used internally)")
 print("Ciphertext u (first 10):", u[:10])
 print("Ciphertext v (first 10):", v[:10])
 print("Derived shared AES key:", shared_key.hex())
+#print("Recovered AES key:", recovered_key.hex())
+#print("Match:", shared_key == recovered_key)
 
 # Optional: override AES round key with first 16 bytes of Kyber key
 new_key_matrix = np.array([
