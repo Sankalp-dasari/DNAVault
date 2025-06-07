@@ -8,7 +8,7 @@ import numpy as np
 import hashlib
 
 class Kyber:
-   def __init__(self, n = 256, q = 3329, sigma = 1.5, clamp = 5):
+   def __init__(self, n = 256, q = 3329, sigma = 0.15, clamp = 2):
       self.n = n  #polynomial degree
       self.q = q  #modulus, we use a prime number for modular arithmetic and 3329 is chosen as it fits in 12 bits
       self.sigma = sigma  #standard deviation for noise
@@ -59,12 +59,17 @@ class Kyber:
    def encodeMessage(self, m):
       #encodes 256 bits message into a polynomial
       bit_array = np.unpackbits(np.frombuffer(m, dtype=np.uint8)).astype(np.int32)
-      return (bit_array * (self.q // 2)).astype(np.int32)
+      high = int(self.q * 3 / 4)  # safer encoding for 1
+      return (bit_array * high).astype(np.int32)
+
+
    
    # Decodes a polynomial back into a 256 bits message
    def decodeMessage(self, poly):
-      bits = (poly >(self.q//4)).astype(np.uint8)
-      return np.packbits(bits).tobytes()  
+    threshold = self.q // 2  # 1664
+    bits = (poly > threshold).astype(np.uint8)
+    return np.packbits(bits).tobytes()
+ 
    # Generates a public key that is shared and is used in encapsulation.
    # A secret key that is kept private and is used in decapsulation
    # A public matrix polynomial 'A' that acts as a lattice generator
@@ -99,8 +104,10 @@ class Kyber:
       m_encoded = self.encodeMessage(m)
       
       u = self.polyAdd(self.polyMul(A, r), e1)  # u = A·r + e1 
-      v = self.polyAdd(self.polyMul(pk, r), m_encoded) # v = pk·r + e2
-      
+      # v = pk·r + m_encoded + e2
+      v1 = self.polyMul(pk, r)
+      v2 = self.polyAdd(v1, m_encoded)
+      v = self.polyAdd(v2, e2)
 
       # Convert v to bytes and hash it to get a clean AES key
       combined = u.astype(np.uint16).tobytes() +v.astype(np.uint16).tobytes() + m
@@ -108,10 +115,22 @@ class Kyber:
 
       return (u, v), shared_key, m  # ciphertext + derived AES key
 
-   #def decapsulate(self, u, v, m):
+    #Decapsulates the ciphertext using the shared secret key
+   def decapsulate(self, u, v, s):
+      """
+      Decapsulation:
+      -Uses the secret key s to recover the shared secret from ciphertext. v' = u.s
+      -Then m is recovered from v' by decoding the polynomial. m = decode(v - v')
+      -Computes shared key using SHA-256(u || v || m)
+      """
+      v_prime = self.polyMul(u, s)
+      m_recovered = self.decodeMessage((v - v_prime) % self.q)
+         
+      combined = u.astype(np.uint16).tobytes() + v.astype(np.uint16).tobytes() + m_recovered
+      shared_key = hashlib.sha256(combined).digest()
+      return shared_key
    
-
-
+   
 if __name__ == "__main__":
     kyber = Kyber()
 
@@ -120,9 +139,27 @@ if __name__ == "__main__":
 
     # Encapsulate: Generate ciphertext and AES key
     (u, v), shared_key, m = kyber.encapsulate(pk, A)
+    
+    # Decapsulate: Recover shared key using secret key
+    recovered_key = kyber.decapsulate(u, v, s)
+    
+    print("Original m:      ", m.hex())
+    v_prime = kyber.polyMul(u, s)
+    m_recovered = kyber.decodeMessage((v - v_prime) % kyber.q)
+    print("Recovered m:     ", m_recovered.hex())
+    print("m match:         ", m == m_recovered)
+
+    print("v[:10]      =", v[:10])
+    print("v'[:10]     =", v_prime[:10])
+    print("v - v' mod q =", ((v - v_prime) % kyber.q)[:10])
+
+
     # Display short previews
     print("u (partial):", u[:5])
     print("v (partial):", v[:5])
+    
     print("Shared AES Key:", shared_key.hex())
+    print("Recovered AES key:", recovered_key.hex())
+    print("Match:", shared_key == recovered_key)
 
 
