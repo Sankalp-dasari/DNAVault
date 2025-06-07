@@ -131,35 +131,5 @@ class Kyber:
       return shared_key
    
    
-if __name__ == "__main__":
-    kyber = Kyber()
-
-    # Keygen: Get public key (pk), private key (s), and matrix A
-    A, s, pk = kyber.keygen()
-
-    # Encapsulate: Generate ciphertext and AES key
-    (u, v), shared_key, m = kyber.encapsulate(pk, A)
-    
-    # Decapsulate: Recover shared key using secret key
-    recovered_key = kyber.decapsulate(u, v, s)
-    
-    print("Original m:      ", m.hex())
-    v_prime = kyber.polyMul(u, s)
-    m_recovered = kyber.decodeMessage((v - v_prime) % kyber.q)
-    print("Recovered m:     ", m_recovered.hex())
-    print("m match:         ", m == m_recovered)
-
-    print("v[:10]      =", v[:10])
-    print("v'[:10]     =", v_prime[:10])
-    print("v - v' mod q =", ((v - v_prime) % kyber.q)[:10])
-
-
-    # Display short previews
-    print("u (partial):", u[:5])
-    print("v (partial):", v[:5])
-    
-    print("Shared AES Key:", shared_key.hex())
-    print("Recovered AES key:", recovered_key.hex())
-    print("Match:", shared_key == recovered_key)
 
 
