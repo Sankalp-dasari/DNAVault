@@ -1,10 +1,28 @@
-import numpy as np
+# AES ENCRYPTION AND DECRYPTION
 
+import numpy as np  # Python library for matrix mulitplication and mathematical calculations
+
+"""
+AES Class for Encrypting and Decrypting Data.
+
+This implementation performs AES-128 bit block cipher encryption and decryption, 
+where each state is represented as a 4x4 matrix of 8-bit binary strings.
+
+This class uses:
+- SubBytes
+- ShiftRows
+- MixColumns
+- AddRoundKey
+- Key Expansion (to generate round keys)
+
+Integration with Kyber (Post-Quantum Cryptography) is also demonstrated to replace 
+the AES round key with a key generated via a quantum-secure key exchange."""
 class Encryption:
     def __init__(self, plaintext):
         self.plaintext = plaintext
         self.current_state = plaintext.copy()  # Track current state
 
+        # Standard AES S-box (Substitution Box) for the Substitution Bytes step
         self.s_box_hex = [
             [0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76],
             [0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0],
@@ -24,7 +42,7 @@ class Encryption:
             [0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16]
         ]
 
-        # Convert to binary strings
+        # Convert S-box hex values to 8-bit binary strings
         self.s_box = np.empty((16, 16), dtype=object)
         for i in range(16):
             for j in range(16):
@@ -72,7 +90,7 @@ class Encryption:
             [0x0B, 0x0D, 0x09, 0x0E]
         ])
         
-
+        # Initial Round key for encryption (Could be replaced for Kyber
         self.round_key = np.array([
             ['10101100', '01110111', '01100110', '11110011'],
             ['00011001', '11111010', '11011100', '00100001'],
@@ -80,11 +98,14 @@ class Encryption:
             ['01010111', '01011100', '00000000', '01101010']
         ])
 
+        # Store all round keys
         self.list_of_round_keys = []
+
+        # Add the initial round key to the list of round keys
         self.list_of_round_keys.append(self.round_key)
 
 
-        # Round Constants
+        # Round Constants used in Key Expansion
         self.round_const = np.array([
             ['00000001', '00000000', '00000000', '00000000'],
             ['00000010', '00000000', '00000000', '00000000'],
@@ -99,45 +120,70 @@ class Encryption:
             ['01101100', '00000000', '00000000', '00000000']
         ])
 
+        # Keeps track of the round counter
         self.round_counter = 0
 
+    
     def sub_bytes(self, state_array):
-        """Apply SubBytes transformation"""
-        result = np.zeros_like(state_array)
-        rows, cols = state_array.shape
+        """
+        Byte Substitution using AES S-Box — Non-linear transformation
+        """
+        result = np.zeros_like(state_array) # Matrix to store the result
+        rows, cols = state_array.shape # Dimensions of the state array
         
+        # Iterate over all elements of the state arrat matrix
         for i in range(rows):
             for j in range(cols):
-                byte = state_array[i, j]
-                row_in_sbox = int(byte[:4], 2)
-                col_in_sbox = int(byte[4:], 2)
-                result[i, j] = self.s_box[row_in_sbox, col_in_sbox]
-        return result
-    
-    def shift_rows(self, state_array):
-        """Apply ShiftRows transformation"""
-        shifted_rows = state_array.copy()
-        rows, cols = state_array.shape
+                byte = state_array[i, j] # Extract byte
+                row_in_sbox = int(byte[:4], 2) # Store the row number
+                col_in_sbox = int(byte[4:], 2) # Store the column number
+                result[i, j] = self.s_box[row_in_sbox, col_in_sbox] # Insert the corresponding value from the S-Box into the result
+        return result # Return the result
 
+ 
+    def shift_rows(self, state_array):
+        """
+        Shift rows left by their row index
+        1st row --> no shift
+        2nd row --> circular left shift by one
+        3rd row --> circular left shift by two
+        4th row --> circular left shift by three
+        """   
+        shifted_rows = state_array.copy() # Copy of the state array
+        rows, cols = state_array.shape # Dimensions of the state array
+
+        # Iterate through the rows
         for i in range(rows):
-            shifted_rows[i] = np.roll(state_array[i], shift=(-1 * i))
-        return shifted_rows
+            shifted_rows[i] = np.roll(state_array[i], shift=(-1 * i)) # Shift each row by their row index
+        return shifted_rows # Return the shifted matrix
+
 
     def gf_multiply(self, a, b):
-        """Galois Field multiplication for MixColumns"""
-        result = 0
+        """
+        Perform multiplication in Galois Field GF(2^8)
+
+        This function performs the multiplication of two bytes (a and b) in GF(2^8)
+        following the Russian Peasant Multiplication method combined with modular reduction.
+        """
+
+        result = 0 # Initialize the result to 0
+
         while b:
             if b & 1: 
-                result ^= a
-            if a & 0x80: 
-                a = (a << 1) ^ 0x1b 
+                result ^= a # Addition in GF(2^8) is XOR
+            if a & 0x80: # If the highest bit (8th bit) of a is 1, overflow occurs
+                a = (a << 1) ^ 0x1b # Shift left and reduce modulo 0x11b
             else:
-                a <<= 1 
-            b >>= 1
+                a <<= 1  # If no overflow, simple left shift by 1
+            # Move to the next bit of b
+            b >>= 1 # Shift b right by 1 to process the next bit
         return result & 0xff 
 
+
     def mix_columns(self, shifted_rows):
-        """Apply MixColumns transformation"""
+        """
+        MixColumns step — Linear mixing of bytes within each column
+        """
         # Convert binary strings to integers
         int_matrix = np.zeros((4, 4), dtype=np.uint8)
         for i in range(4):
@@ -164,8 +210,16 @@ class Encryption:
                 mixed_columns[i, j] = format(result[i, j], '08b')
         return mixed_columns
     
+
     def key_expansion(self, counter):
-        """Apply Key Expansion"""
+        """
+        Apply Key Expansion
+
+        Expand round keys for AES.
+            - RotWord: Rotate last word
+            - SubWord: Substitute using S-box
+            - XOR with previous word and Rcon
+        """
 
         # Extract 4 words
         wa = self.list_of_round_keys[counter][:, 0]
@@ -192,6 +246,8 @@ class Encryption:
         wd = wd ^ RC
 
         # Set new Words
+
+        # Convert to integers for performing XOR operation
         wa = np.array([int(x, 2) for x in wa], dtype=np.uint8)
         wb = np.array([int(x, 2) for x in wb], dtype=np.uint8)
         wc = np.array([int(x, 2) for x in wc], dtype=np.uint8)
@@ -202,11 +258,13 @@ class Encryption:
         wc = wc ^ wb
         wd = temp ^ wc
 
+        # Convert back to bitstrings
         wa = np.array([format(x, '08b') for x in wa], dtype=object)
         wb = np.array([format(x, '08b') for x in wb], dtype=object)
         wc = np.array([format(x, '08b') for x in wc], dtype=object)
         wd = np.array([format(x, '08b') for x in wd], dtype=object)
 
+        # Generate 4 4x1 column matrices
         wa = np.transpose(wa)
         wb = np.transpose(wb)
         wc = np.transpose(wc)
@@ -214,46 +272,62 @@ class Encryption:
 
         # Stack all 4x1 column matrices into a 4x4 matrix (round key)
         new_round_key = np.column_stack((wa, wb, wc, wd))
+
+        # Add new key to list of round keys
         self.list_of_round_keys.append(new_round_key)
 
+
     def add_round_key(self, state_array, round_num=None):
-        """Apply AddRoundKey transformation"""
-        rows, cols = state_array.shape
-        result = np.empty_like(state_array)
+        """
+        Apply Round Key Transformation
+        XOR the state with the round key
+        """
+        rows, cols = state_array.shape # Obtain size of matrix
+        result = np.empty_like(state_array) # Result matrix to store output of function
         
+        # If this is the initial round, then use the initial round key, else use the round key
+        # from the list for corresponding round
         if round_num is None:
             round_key = self.list_of_round_keys[self.round_counter]
             self.round_counter += 1
         else:
             round_key = self.list_of_round_keys[round_num]
 
+        # Perform XOR operation
         for i in range(rows):
             for j in range(cols):
-                byte1 = int(state_array[i, j], 2)
-                byte2 = int(round_key[i, j], 2)
-                xor_result = byte1 ^ byte2
-                result[i, j] = format(xor_result, '08b')
+                byte1 = int(state_array[i, j], 2) # Extract byte in the form of integer
+                byte2 = int(round_key[i, j], 2) # Extract byte in the form of integer
+                xor_result = byte1 ^ byte2 # XOR The operation
+                result[i, j] = format(xor_result, '08b') # Convert back to bitstring
 
         return result
     
-    def encrypt(self):
-        """Perform AES encryption"""
-        self.round_counter = 0
-        state = self.plaintext.copy()
 
+    def encrypt(self):
+        """
+        Perform AES-128 Encryption on a 4x4 plaintext state matrix.
+        The AES encryption algorithm transforms a plaintext block into a ciphertext block
+        """
+        self.round_counter = 0 # Set the round counter to 0
+        state = self.plaintext.copy() # Create a copy of the plaintext
+
+        # Generate all the round keys using key expansion
         for i in range(10):
             enc.key_expansion(counter=i)
 
-        self.round_counter = 0
+        self.round_counter = 0 # Reset the round counter for keeping track of number of rounds of encryption
 
-        state = self.add_round_key(state)
+        state = self.add_round_key(state) # Add the initial round key
 
+        # Perform 10 rounds of encryption
         for round_num in range(1, 10):
             state = self.sub_bytes(state)
             state = self.shift_rows(state)
             state = self.mix_columns(state)
             state = self.add_round_key(state)
 
+        # Perform the last round of encryption (all steps except mix columns)
         state = self.sub_bytes(state)
         state = self.shift_rows(state)
         state = self.add_round_key(state)
@@ -263,21 +337,29 @@ class Encryption:
     # ===================== DECRYPTION METHODS =====================
 
     def inv_sub_bytes(self, state_array):
-        """Apply Inverse SubBytes transformation"""
-        result = np.zeros_like(state_array)
+        """
+        Apply Inverse SubBytes transformation.
+        Each byte in the state matrix is replaced using the inverse S-Box (InvS-Box).
+        """
+        result = np.zeros_like(state_array) # Create an empty matrix to store result of function
         rows, cols = state_array.shape
         
+        # Iterate over each byte in the state matrix
         for i in range(rows):
             for j in range(cols):
-                byte = state_array[i, j]
-                row_in_sbox = int(byte[:4], 2)
-                col_in_sbox = int(byte[4:], 2)
-                result[i, j] = self.inv_s_box[row_in_sbox, col_in_sbox]
+                byte = state_array[i, j] # Retrieve the byte
+                row_in_sbox = int(byte[:4], 2) # Use first 4 bits for row index
+                col_in_sbox = int(byte[4:], 2) # Use last 4 bits for column index
+                result[i, j] = self.inv_s_box[row_in_sbox, col_in_sbox] # Substitute using inv_s_box
                
         return result
 
     def inv_shift_rows(self, state_array):
-        """Apply Inverse ShiftRows transformation"""
+        """
+        Apply Inverse ShiftRows transformation
+        Reverses the ShiftRows step by cyclically shifting each row to the right
+        by the row number
+        """
         shifted_rows = state_array.copy()
         rows, cols = state_array.shape
 
@@ -288,7 +370,11 @@ class Encryption:
         return shifted_rows
 
     def inv_mix_columns(self, state_array):
-        """Apply Inverse MixColumns transformation"""
+        """
+        Apply Inverse MixColumns transformation.
+        Reverses the MixColumns step by multiplying each column of the state
+        by the inverse MixColumns matrix over GF(2^8).
+        """
         # Convert binary strings to integers
         int_matrix = np.zeros((4, 4), dtype=np.uint8)
         for i in range(4):
@@ -317,25 +403,35 @@ class Encryption:
         return inv_mixed_columns
 
     def decrypt(self, ciphertext):
-        """Perform AES decryption"""
+        """
+        Perform AES decryption on a ciphertext block.
+        AES decryption involves applying the inverse transformations in the reverse order
+        of the encryption process to recover the original plaintext.
+        """
         state = ciphertext.copy()
-
+        # Initial round: AddRoundKey with the last (10th) round key
         state = self.add_round_key(state, 10)
 
+        # 9 full inverse rounds
         for round_num in range(9, 0, -1):
             state = self.inv_shift_rows(state)
             state = self.inv_sub_bytes(state)
             state = self.add_round_key(state, round_num)
             state = self.inv_mix_columns(state)
 
+        # Final round (no MixColumns)
         state = self.inv_shift_rows(state)
         state = self.inv_sub_bytes(state)
         state = self.add_round_key(state, 0)
 
         return state
 
-
+"""
+TEST AES ENCRYPTION/DECRYPTION
+"""
 if __name__ == "__main__":
+
+    # Define a plaintext 4x4 block as a matrix of 8-bit binary strings
     plaintext = np.array([
         ['11101010', '00000100', '01100101', '10000101'],
         ['10000011', '01000101', '01011101', '10010110'],
