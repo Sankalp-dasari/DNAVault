@@ -10,9 +10,9 @@
 # - Decrypts DNA data and prints result
 # - Original and Decrypted DNA data are verified 
 
-from kyber import Kyber
-from aes import Encryption
-from dna_utils import dna_utils
+from backend.kyber import Kyber
+from backend.aes import Encryption
+from backend.dna_utils import dna_utils
 import numpy as np
 
 # initialise

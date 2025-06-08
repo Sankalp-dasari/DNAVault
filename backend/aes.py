@@ -455,7 +455,7 @@ if __name__ == "__main__":
 
  # ====================== KYBER + AES INTEGRATION ======================
 # Testcase for generating a Kyber key to replace the AES round key
-from kyber import Kyber
+from backend.kyber import Kyber
 
 
 # Instantiate Kyber and generate keys
