@@ -59,6 +59,7 @@ B4[AES Decrypt Blocks] --> B5[Decode Binary → DNA]
 end
 subgraph "Kyber Key Exchange"
     A1[Kyber Key Generation] --> A2[Public Key Distribution]
+    A2 --> A3
     A3[Key Encapsulation] --> A4[Shared Secret Key Derivation]
 end
 
