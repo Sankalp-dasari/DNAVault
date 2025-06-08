@@ -39,6 +39,17 @@ It is designed to showcase **end-to-end DNA data encryption and decryption** wit
 
 On average, the Kyber-DNA algorithm is approximately **2.5507× $10^5$** times faster compared to the RSA-Base64 algorithm at key generation.
 
+### Classical and Quantum Attack Performance (DES vs AES vs RSA) ([IEEE Xplore](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7298334))
+
+| **Factor**               | **DES**                             | **AES**                              | **RSA**                         |
+|---------------------------|-------------------------------------|--------------------------------------|----------------------------------|
+| **Possible Keys**         | 2⁵⁶ ≈ 7.2×10¹⁶                     | 2¹²⁸, 2¹⁹², 2²⁵⁶                    | Variable (RSA-2048 ≈ 112-bit equiv) |
+| **Time to Break (Classical)** | ~1 day (modern hardware)         | ~10¹⁸ years (AES-128 brute-force)    | RSA-2048: ~10¹⁵ years (factoring, classical) |
+| **Time to Break (Quantum)** | ~ seconds (Grover, too small key)  | AES-128: 2⁶⁴ operations (~0.6 years with ideal Grover) | RSA-2048: polynomial time (minutes to hours, post-quantum) |
+| **Operations to Break**   | 2⁵⁶ brute-force                     | 2¹²⁸ brute-force; 2⁶⁴ Grover quantum | Shor's Algorithm: polynomial in log(n) |
+
+AES can withstand both classical and quantum attacks well and is considered strong and is classified as safe for "top secret" information by the NSA.
+
 ## Architecture Overview
 ``` mermaid
 flowchart TB
@@ -82,11 +93,13 @@ A4 --> B4
    cd DNAVault
 
 ## References
-NIST Post-Quantum Cryptography Standardization
+- Bos, J. W., Ducas, L., Kiltz, E., Lepoint, T., Lyubashevsky, V., Schanck, J. M., Schwabe, P., & Seiler, G. (2017). _CRYSTALS-Kyber: A CCA-Secure Module-Lattice-Based KEM_. Retrieved from [https://pq-crystals.org/kyber/](https://pq-crystals.org/kyber/)
 
-AES (Advanced Encryption Standard) - FIPS PUB 197
+- National Institute of Standards and Technology (NIST). (2001). _Announcing the Advanced Encryption Standard (AES)_. (FIPS PUB 197). U.S. Department of Commerce. Retrieved from [https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf)
 
-Kyber: Module-Lattice-Based Key Encapsulation Mechanism
+- Aggarwal, D., Brennen, G. K., Lee, T., Santha, M., & Tomamichel, M. (2023). Quantum attacks on public-key cryptosystems. _IEEE Transactions on Information Theory_, 69(8), 5208–5253. [https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10956786](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=10956786)
+
+- Bernstein, D. J., & Lange, T. (2015). Post-quantum cryptography. _IEEE Security & Privacy_, 13(5), 14–19. [https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7298334](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7298334)
 
 ## License
 This project is released under the MIT License.
