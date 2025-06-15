@@ -13,6 +13,8 @@ This project demonstrates **quantum-resistant encryption** of DNA sequences usin
 
 It is designed to showcase **end-to-end DNA data encryption and decryption** with post-quantum security guarantees making it suitable for use in bioinformatics, healthcare, and genetic research fields where data confidentiality is paramount.
 
+[LINK TO THE PROJECT](https://dna-vault.vercel.app/)
+
 ## Features
 - **AES-128 Encryption**:  
   Custom implementation of AES operating on 4×4 matrices of 8-bit binary strings.
